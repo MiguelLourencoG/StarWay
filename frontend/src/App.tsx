@@ -1,37 +1,52 @@
 import { Canvas } from "@react-three/fiber"
 import { OrbitControls, Stats } from "@react-three/drei"
 import { EffectComposer, Bloom } from "@react-three/postprocessing"
-
 import { CameraZoom, CameraOrbit } from "./components/CameraControls"
 import { Stars } from "./components/Stars"
 import { useStars } from "./hooks/useStars"
+import { useEffect, useState } from "react"
+import * as THREE from "three"
+import { StarDetailPanel } from "./components/StarDetailPanel"
 
 
 function App() {
 
   const { buffer, meta } = useStars();
+  const [selectedId, setSelectedId] = useState<{id: number, position: [number, number, number]} | null>(null)
+
+  useEffect(() => {
+    console.log(selectedId);
+  }, [selectedId])
 
   return (
-    <div 
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        flexDirection: "column"
+    <div style={{
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      flexDirection: "column"
     }}>
       <p>Número de estrelas: {meta?.count ?? "Carregando..."}</p>
+      
       <Canvas
-        camera={{position: [0, 20, 20]}}
+        camera={{ position: [0, 20, 20] }}
         dpr={[1, 1.5]}
-        style={{height: "100vh", width: "80vw"}}
+        style={{ height: "100vh", width: "80vw" }}
+        raycaster={{ params: { Points: { threshold: 0.12 } } as THREE.RaycasterParameters }}
+        
       >
-        <Stats/>
+        <Stats />
         <OrbitControls makeDefault listenToKeyEvents={window} keyPanSpeed={20} />
-        <CameraOrbit accel={0.00005} damping={0.98}/>
+        <CameraOrbit accel={0.00005} damping={0.98} />
         <CameraZoom accel={0.0005} />
-        <Stars 
-          buffer={buffer} 
+        <Stars
+          buffer={buffer}
           meta={meta}
+          onSelect={(id, position) => setSelectedId({id, position})}
+        />
+        <StarDetailPanel 
+          selectedId={selectedId?.id}
+          position={selectedId?.position}
+          onClose={() => setSelectedId(null)}
         />
         <EffectComposer>
           <Bloom

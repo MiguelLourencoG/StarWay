@@ -30,16 +30,25 @@ export function ciToRGB(ci: number) {
 }
 
 type Props = {
-    meta: StarsMeta | null,
-    buffer: Float32Array | null
+    meta: StarsMeta | null;
+    buffer: Float32Array | null;
+    onSelect: (id: number, position: [number, number, number]) => void;
 }
 
-export function Stars({meta, buffer}:Props) {
+export function Stars({ meta, buffer, onSelect }: Props) {
     const circle = useTexture("/circle.png")
 
-    const { positions, colors } = useMemo(() => {
-        if(!meta || !buffer){
-        return {positions: new Float32Array(0), colors: new Float32Array(0)}
+    const { positions, colors, ids } = useMemo<{
+        positions: Float32Array;
+        colors: Float32Array;
+        ids: Int32Array;
+    }>(() => {
+        if (!meta || !buffer) {
+            return {
+                positions: new Float32Array(0),
+                colors: new Float32Array(0),
+                ids: new Int32Array(0),
+            }
         }
 
         const N = meta.count
@@ -47,23 +56,35 @@ export function Stars({meta, buffer}:Props) {
 
         const positions = new Float32Array(N * 3);
         const colors = new Float32Array(N * 3);
-        
-        for(let i = 0; i < N; i++){
-        positions[i * 3] =     buffer[i * S]
-        positions[i * 3 + 1] = buffer[i * S + 1]
-        positions[i * 3 + 2] = buffer[i * S + 2]
-        
-        const [r, g, b] = ciToRGB(buffer[i * S + 3])
-        colors[i * 3] =     r
-        colors[i * 3 + 1] = g
-        colors[i * 3 + 2] = b
+        const ids = new Int32Array(N);
+
+        for (let i = 0; i < N; i++) {
+            positions[i * 3] = buffer[i * S]
+            positions[i * 3 + 1] = buffer[i * S + 1]
+            positions[i * 3 + 2] = buffer[i * S + 2]
+
+            const [r, g, b] = ciToRGB(buffer[i * S + 3])
+            colors[i * 3] = r
+            colors[i * 3 + 1] = g
+            colors[i * 3 + 2] = b
+
+            ids[i] = buffer[i * S + 4]
         }
-        
-        return { positions, colors };
+
+        return { positions, colors, ids };
     }, [buffer, meta])
 
     return (
-        <points>
+        <points onClick={(e) => {
+            e.stopPropagation();
+            if(e.index === undefined) return;
+            onSelect(ids[e.index],[
+                positions[e.index * 3],
+                positions[e.index * 3 + 1],
+                positions[e.index * 3 + 2]
+            ]);
+            
+        }}>
             <bufferGeometry>
                 <bufferAttribute
                     attach={"attributes-position"}

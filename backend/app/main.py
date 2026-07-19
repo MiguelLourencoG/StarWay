@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 
@@ -7,14 +7,13 @@ from backend.app.preprocess import preprocess, build_binary, LAYOUT, STRIDE
 from backend.app.config import DATA_PATH
 
 STATE = {}
-DESIRED_COLUMNS = ['id', 'proper', 'mag', 'ci', 'x', 'y', 'z', 'dist']
 
 @asynccontextmanager
 async def lifespan(app):
-    df = pd.read_csv(DATA_PATH, usecols=DESIRED_COLUMNS)
+    df = pd.read_csv(DATA_PATH)
     STATE["stars"] = preprocess(df)
     STATE["stars_binary"] = build_binary(STATE["stars"])
-    print(f"[startup] {len(STATE['stars'])} estrelas | binário {len(STATE['stars_binary']) / 1024:.0f} KB")
+    STATE["by_id"] = {int(s["id"]): s for s in STATE["stars"]}
     yield
     STATE.clear()
 
@@ -45,3 +44,10 @@ def get_stars_binary():
         content=STATE["stars_binary"],
         media_type="application/octet-stream",
     )
+
+@app.get("/stars/{id}")
+def get_star(id: int):
+    star = STATE["by_id"].get(id)
+    if not star:
+        raise HTTPException(status_code=404, detail="Estrela não encontrada.")
+    return star
